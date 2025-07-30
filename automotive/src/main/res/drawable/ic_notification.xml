@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- White background circle -->
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="@color/white" />
+            <size android:width="24dp" android:height="24dp" />
+        </shape>
+    </item>
+
+    <!-- Via Verde logo image -->
+    <item
+        android:width="20dp"
+        android:height="20dp"
+        android:gravity="center"
+        android:drawable="@drawable/via_verde_logo" />
+</layer-list>
