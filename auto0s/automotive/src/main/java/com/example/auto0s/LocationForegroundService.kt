@@ -70,7 +70,7 @@ class LocationForegroundService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d(TAG, "LocationForegroundService started")
+        Log.d(TAG, "LocationForegroundService onStartCommand called - flags: $flags, startId: $startId")
 
         // Check if we have a valid token before starting
         if (!hasValidToken()) {
@@ -78,6 +78,8 @@ class LocationForegroundService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
+
+        Log.d(TAG, "onStartCommand: Token validation passed, proceeding with service startup")
 
         try {
             // Create and start foreground service with notification
@@ -92,6 +94,7 @@ class LocationForegroundService : Service() {
 
         } catch (e: Exception) {
             Log.e(TAG, "Error starting foreground service", e)
+            // Don't stop the service on error, let it retry
         }
 
         return START_STICKY
@@ -109,13 +112,19 @@ class LocationForegroundService : Service() {
     }
 
     private fun startLocationUpdates() {
+        Log.d(TAG, "startLocationUpdates: Checking location permissions")
+
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION)
             != PackageManager.PERMISSION_GRANTED &&
             ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION)
             != PackageManager.PERMISSION_GRANTED) {
-            Log.e(TAG, "Location permission not granted")
+            Log.w(TAG, "startLocationUpdates: Location permission not granted, will retry later")
+            // Don't return, continue with service startup but without location updates
+            // The service will still run and show notification
             return
         }
+
+        Log.d(TAG, "startLocationUpdates: Location permissions granted, starting updates")
 
         // Check if GPS provider is available
         if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
@@ -230,8 +239,22 @@ class LocationForegroundService : Service() {
 
         private fun createNotification(): Notification {
         try {
-            val intent = Intent(this, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            // Check if app is already running
+            val activityManager = getSystemService(ACTIVITY_SERVICE) as android.app.ActivityManager
+            val runningTasks = activityManager.getRunningTasks(1)
+            val isAppRunning = runningTasks.isNotEmpty() &&
+                runningTasks[0].topActivity?.packageName == packageName
+
+            val intent = if (isAppRunning) {
+                // App is running, go directly to MainActivity
+                Intent(this, MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                }
+            } else {
+                // App is not running, show splash screen
+                Intent(this, SplashActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                }
             }
 
             val pendingIntent = PendingIntent.getActivity(

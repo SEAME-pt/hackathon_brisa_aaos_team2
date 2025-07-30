@@ -7,6 +7,7 @@ import android.util.Log
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
+import android.widget.Switch
 import androidx.appcompat.app.AppCompatActivity
 
 class SettingsActivity : AppCompatActivity() {
@@ -23,6 +24,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var logoutButton: Button
     private lateinit var goBackButton: Button
     private lateinit var userEmailText: TextView
+    private lateinit var autoStartToggle: Switch
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,6 +34,7 @@ class SettingsActivity : AppCompatActivity() {
         logoutButton = findViewById(R.id.logout_button)
         goBackButton = findViewById(R.id.go_back_button)
         userEmailText = findViewById(R.id.user_email_text)
+        autoStartToggle = findViewById(R.id.auto_start_toggle)
 
         // Check if user is logged in
         val token = getToken()
@@ -49,6 +52,9 @@ class SettingsActivity : AppCompatActivity() {
         } else {
             userEmailText.text = "Logged in"
         }
+
+        // Setup auto-start toggle
+        setupAutoStartToggle()
 
         goBackButton.setOnClickListener {
             Log.d(TAG, "Go back button clicked")
@@ -101,5 +107,36 @@ class SettingsActivity : AppCompatActivity() {
         Log.d(TAG, "clearStoredEmail: Removing email from SharedPreferences")
         val prefs = getSharedPreferences("via_verde_prefs", Context.MODE_PRIVATE)
         prefs.edit().remove("user_email").apply()
+    }
+
+    private fun setupAutoStartToggle() {
+        // Load current auto-start setting
+        val isAutoStartEnabled = isAutoStartEnabled()
+        autoStartToggle.isChecked = isAutoStartEnabled
+        Log.d(TAG, "setupAutoStartToggle: Auto-start is ${if (isAutoStartEnabled) "enabled" else "disabled"}")
+
+        // Setup toggle listener
+        autoStartToggle.setOnCheckedChangeListener { _, isChecked ->
+            Log.d(TAG, "setupAutoStartToggle: Auto-start toggle changed to: $isChecked")
+            setAutoStartEnabled(isChecked)
+
+            val message = if (isChecked) {
+                "Auto-start enabled - location tracking will start on device boot"
+            } else {
+                "Auto-start disabled - location tracking will not start automatically"
+            }
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun isAutoStartEnabled(): Boolean {
+        val prefs = getSharedPreferences("via_verde_prefs", Context.MODE_PRIVATE)
+        return prefs.getBoolean("auto_start_enabled", true) // Default to true
+    }
+
+    private fun setAutoStartEnabled(enabled: Boolean) {
+        Log.d(TAG, "setAutoStartEnabled: Setting auto-start to: $enabled")
+        val prefs = getSharedPreferences("via_verde_prefs", Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("auto_start_enabled", enabled).apply()
     }
 }
