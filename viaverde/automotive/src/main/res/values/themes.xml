@@ -1,0 +1,30 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.Auto0s" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="colorPrimary">@color/via_verde_green</item>
+        <item name="colorPrimaryVariant">@color/via_verde_dark_green</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="android:windowBackground">@color/white</item>
+        <item name="colorSecondary">@color/via_verde_green</item>
+        <item name="colorSurface">@color/white</item>
+        <item name="colorOnSurface">@color/dark_grey</item>
+    </style>
+
+    <!-- Splash screen theme -->
+    <style name="Theme.Auto0s.Splash" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="android:windowBackground">@drawable/splash_background</item>
+        <item name="android:statusBarColor">@color/white</item>
+        <item name="android:navigationBarColor">@color/white</item>
+    </style>
+
+    <!-- Bottom Navigation Text Styles -->
+    <style name="BottomNavigationTextActive" parent="TextAppearance.MaterialComponents.Caption">
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">@color/via_verde_green</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="BottomNavigationTextInactive" parent="TextAppearance.MaterialComponents.Caption">
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">@color/dark_grey</item>
+    </style>
+</resources>
