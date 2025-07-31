@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Enforce HTTPS for all network traffic -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">dev.a-to-be.com</domain>
+        <domain includeSubdomains="true">a-to-be.com</domain>
+    </domain-config>
+
+    <!-- Block cleartext traffic for all other domains -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <!-- Only trust system CAs -->
+            <certificates src="system"/>
+        </trust-anchors>
+    </base-config>
+
+    <!-- Debug configuration for development -->
+    <debug-overrides>
+        <trust-anchors>
+            <!-- Allow user-added CAs for debugging -->
+            <certificates src="user"/>
+        </trust-anchors>
+    </debug-overrides>
+</network-security-config>
