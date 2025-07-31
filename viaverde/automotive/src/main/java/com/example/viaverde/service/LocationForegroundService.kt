@@ -146,10 +146,13 @@ class LocationForegroundService : Service() {
                 val channel = NotificationChannel(
                     CHANNEL_ID,
                     CHANNEL_NAME,
-                    NotificationManager.IMPORTANCE_LOW
+                    NotificationManager.IMPORTANCE_DEFAULT
                 ).apply {
                     description = CHANNEL_DESCRIPTION
-                    setShowBadge(false)
+                    setShowBadge(true)
+                    enableLights(true)
+                    enableVibration(false)
+                    setSound(null, null)
                 }
 
                 val notificationManager = getSystemService(NotificationManager::class.java)
@@ -180,8 +183,9 @@ class LocationForegroundService : Service() {
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentIntent(pendingIntent)
                 .setOngoing(true)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setAutoCancel(false)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .build()
 
             Log.d(TAG, "Notification created with text: Your location is being shared")
@@ -195,7 +199,8 @@ class LocationForegroundService : Service() {
                 .setContentText("Your location is being shared")
                 .setSmallIcon(R.drawable.ic_notification)
                 .setOngoing(true)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .build()
         }
     }

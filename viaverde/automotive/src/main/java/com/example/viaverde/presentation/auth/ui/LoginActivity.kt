@@ -119,18 +119,9 @@ class LoginActivity : AppCompatActivity() {
                             resetLoginButton()
                             Toast.makeText(this@LoginActivity, "Login successful", Toast.LENGTH_SHORT).show()
 
-                            // Start location service after successful login
-                            if (!LocationForegroundService.isRunning()) {
-                                val intent = Intent(this@LoginActivity, LocationForegroundService::class.java)
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                    startForegroundService(intent)
-                                } else {
-                                    startService(intent)
-                                }
-                            }
-
-                            // Navigate to main activity
+                            // Navigate to main activity with flag to check permissions immediately
                             val intent = Intent(this@LoginActivity, MainActivity::class.java)
+                            intent.putExtra("check_permissions_after_login", true)
                             startActivity(intent)
                             finish()
                         }
