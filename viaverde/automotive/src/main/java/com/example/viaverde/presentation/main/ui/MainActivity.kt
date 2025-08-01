@@ -358,6 +358,18 @@ class MainActivity : AppCompatActivity() {
         // Start the service (auto-start setting only affects boot behavior, not app startup)
         Log.d(TAG, "startLocationServiceIfNeeded: Starting location service")
         serviceManager.startLocationService(this)
+
+        // Check if trip monitoring is enabled
+        val sharedPrefs = getSharedPreferences("settings", Context.MODE_PRIVATE)
+        val isTripMonitoringEnabled = sharedPrefs.getBoolean("trip_monitoring_enabled", false)
+
+        if (isTripMonitoringEnabled) {
+            // Start trip monitor service
+            Log.d(TAG, "startLocationServiceIfNeeded: Starting trip monitor service")
+            serviceManager.startTripMonitorService(this)
+        } else {
+            Log.d(TAG, "startLocationServiceIfNeeded: Trip monitoring disabled, skipping trip monitor service")
+        }
     }
 
     private fun initializeUI() {

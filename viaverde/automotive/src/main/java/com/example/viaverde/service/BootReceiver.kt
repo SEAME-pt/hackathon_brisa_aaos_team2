@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.util.Log
+import com.example.viaverde.service.TripMonitorService
 
 /**
  * Broadcast receiver for handling device boot events
@@ -46,17 +47,28 @@ class BootReceiver : BroadcastReceiver() {
                 return
             }
 
-                                    // Start service directly without delay - the service will handle its own startup logic
-            Log.d(TAG, "handleBootCompleted: Auto-start enabled, starting service directly")
+            // Start location service directly without delay - the service will handle its own startup logic
+            Log.d(TAG, "handleBootCompleted: Auto-start enabled, starting services directly")
 
             try {
-                val serviceIntent = Intent(context, LocationForegroundService::class.java).apply {
+                val locationServiceIntent = Intent(context, LocationForegroundService::class.java).apply {
                     action = "com.example.viaverde.START_SERVICE_FROM_BOOT"
                 }
-                context.startService(serviceIntent)
-                Log.d(TAG, "handleBootCompleted: Service start intent sent successfully")
+                context.startService(locationServiceIntent)
+                Log.d(TAG, "handleBootCompleted: Location service start intent sent successfully")
+
+                // Check if trip monitoring is enabled
+                val isTripMonitoringEnabled = sharedPrefs.getBoolean("trip_monitoring_enabled", false)
+                if (isTripMonitoringEnabled) {
+                    // Start trip monitor service
+                    val tripMonitorServiceIntent = Intent(context, TripMonitorService::class.java)
+                    context.startService(tripMonitorServiceIntent)
+                    Log.d(TAG, "handleBootCompleted: Trip monitor service start intent sent successfully")
+                } else {
+                    Log.d(TAG, "handleBootCompleted: Trip monitoring disabled, skipping trip monitor service")
+                }
             } catch (e: Exception) {
-                Log.e(TAG, "handleBootCompleted: Error starting service directly", e)
+                Log.e(TAG, "handleBootCompleted: Error starting services directly", e)
             }
 
         } catch (e: Exception) {

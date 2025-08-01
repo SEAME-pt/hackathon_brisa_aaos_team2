@@ -2,82 +2,107 @@ package com.example.viaverde.core.service
 
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.util.Log
 import com.example.viaverde.service.LocationForegroundService
+import com.example.viaverde.service.TripMonitorService
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class ServiceManager {
+class ServiceManager @Inject constructor() {
 
     companion object {
         private const val TAG = "ServiceManager"
     }
 
     /**
-     * Start the location foreground service
+     * Start location foreground service
      */
     fun startLocationService(context: Context) {
         Log.d(TAG, "startLocationService: Starting location service")
 
         try {
-            val intent = Intent(context, LocationForegroundService::class.java)
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
-            }
-
-            Log.d(TAG, "startLocationService: Service start intent sent successfully")
+            val serviceIntent = Intent(context, LocationForegroundService::class.java)
+            context.startService(serviceIntent)
+            Log.d(TAG, "startLocationService: Location service start intent sent")
         } catch (e: Exception) {
-            Log.e(TAG, "startLocationService: Error starting service", e)
+            Log.e(TAG, "startLocationService: Error starting location service", e)
         }
     }
 
     /**
-     * Stop the location foreground service
+     * Stop location foreground service
      */
     fun stopLocationService(context: Context) {
         Log.d(TAG, "stopLocationService: Stopping location service")
 
         try {
-            val intent = Intent(context, LocationForegroundService::class.java)
-            context.stopService(intent)
-            Log.d(TAG, "stopLocationService: Service stop intent sent successfully")
+            val serviceIntent = Intent(context, LocationForegroundService::class.java)
+            context.stopService(serviceIntent)
+            Log.d(TAG, "stopLocationService: Location service stop intent sent")
         } catch (e: Exception) {
-            Log.e(TAG, "stopLocationService: Error stopping service", e)
+            Log.e(TAG, "stopLocationService: Error stopping location service", e)
         }
     }
 
     /**
-     * Check if the location service is running
+     * Check if location service is running
      */
     fun isLocationServiceRunning(): Boolean {
         return LocationForegroundService.isRunning()
     }
 
     /**
-     * Start service from boot (with boot action)
+     * Start location service from boot
      */
     fun startLocationServiceFromBoot(context: Context) {
-        Log.d(TAG, "startLocationServiceFromBoot: Starting service from boot")
+        Log.d(TAG, "startLocationServiceFromBoot: Starting location service from boot")
 
         try {
-            val intent = Intent(context, LocationForegroundService::class.java).apply {
+            val serviceIntent = Intent(context, LocationForegroundService::class.java).apply {
                 action = "com.example.viaverde.START_SERVICE_FROM_BOOT"
             }
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
-            }
-
-            Log.d(TAG, "startLocationServiceFromBoot: Service start intent sent successfully")
+            context.startService(serviceIntent)
+            Log.d(TAG, "startLocationServiceFromBoot: Location service start intent sent")
         } catch (e: Exception) {
-            Log.e(TAG, "startLocationServiceFromBoot: Error starting service", e)
+            Log.e(TAG, "startLocationServiceFromBoot: Error starting location service", e)
         }
+    }
+
+    /**
+     * Start trip monitor service
+     */
+    fun startTripMonitorService(context: Context) {
+        Log.d(TAG, "startTripMonitorService: Starting trip monitor service")
+
+        try {
+            val serviceIntent = Intent(context, TripMonitorService::class.java)
+            context.startService(serviceIntent)
+            Log.d(TAG, "startTripMonitorService: Trip monitor service start intent sent")
+        } catch (e: Exception) {
+            Log.e(TAG, "startTripMonitorService: Error starting trip monitor service", e)
+        }
+    }
+
+    /**
+     * Stop trip monitor service
+     */
+    fun stopTripMonitorService(context: Context) {
+        Log.d(TAG, "stopTripMonitorService: Stopping trip monitor service")
+
+        try {
+            val serviceIntent = Intent(context, TripMonitorService::class.java)
+            context.stopService(serviceIntent)
+            Log.d(TAG, "stopTripMonitorService: Trip monitor service stop intent sent")
+        } catch (e: Exception) {
+            Log.e(TAG, "stopTripMonitorService: Error stopping trip monitor service", e)
+        }
+    }
+
+    /**
+     * Check if trip monitor service is running
+     */
+    fun isTripMonitorServiceRunning(): Boolean {
+        return TripMonitorService.isRunning()
     }
 }

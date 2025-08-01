@@ -65,6 +65,13 @@
             android:foregroundServiceType="location"
             android:stopWithTask="false" />
 
+        <!-- Trip Monitor Service -->
+        <service
+            android:name=".service.TripMonitorService"
+            android:enabled="true"
+            android:exported="false"
+            android:stopWithTask="false" />
+
                 <!-- Boot Receiver for Auto-start -->
         <receiver
             android:name=".service.BootReceiver"

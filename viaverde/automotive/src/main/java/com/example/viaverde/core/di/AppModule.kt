@@ -10,12 +10,15 @@ import com.example.viaverde.data.datasource.local.SecurePreferencesDataSource
 import com.example.viaverde.data.datasource.remote.AuthApiService
 import com.example.viaverde.data.datasource.remote.LocationApiService
 import com.example.viaverde.data.datasource.remote.TollApiService
+import com.example.viaverde.data.datasource.remote.TripApiService
 import com.example.viaverde.data.repository.AuthRepositoryImpl
 import com.example.viaverde.data.repository.LocationRepositoryImpl
 import com.example.viaverde.data.repository.TollRepositoryImpl
+import com.example.viaverde.data.repository.TripRepositoryImpl
 import com.example.viaverde.domain.repository.AuthRepository
 import com.example.viaverde.domain.repository.LocationRepository
 import com.example.viaverde.domain.repository.TollRepository
+import com.example.viaverde.domain.repository.TripRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -120,6 +123,28 @@ object AppModule {
         remoteDataSource: TollApiService
     ): TollRepository {
         return TollRepositoryImpl(remoteDataSource)
+    }
+
+    /**
+     * Provide TripApiService
+     */
+    @Provides
+    @Singleton
+    fun provideTripApiService(
+        networkManager: SecureNetworkManager
+    ): TripApiService {
+        return TripApiService(networkManager)
+    }
+
+    /**
+     * Provide TripRepository implementation
+     */
+    @Provides
+    @Singleton
+    fun provideTripRepository(
+        remoteDataSource: TripApiService
+    ): TripRepository {
+        return TripRepositoryImpl(remoteDataSource)
     }
 
     /**
