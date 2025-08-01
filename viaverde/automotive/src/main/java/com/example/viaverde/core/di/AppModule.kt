@@ -3,6 +3,9 @@ package com.example.viaverde.core.di
 import android.content.Context
 import com.example.viaverde.core.security.SecureStorageManager
 import com.example.viaverde.core.security.SecureNetworkManager
+import com.example.viaverde.core.permission.PermissionManager
+import com.example.viaverde.core.service.ServiceManager
+import com.example.viaverde.core.map.MapManager
 import com.example.viaverde.data.datasource.local.SecurePreferencesDataSource
 import com.example.viaverde.data.datasource.remote.AuthApiService
 import com.example.viaverde.data.datasource.remote.LocationApiService
@@ -117,5 +120,32 @@ object AppModule {
         remoteDataSource: TollApiService
     ): TollRepository {
         return TollRepositoryImpl(remoteDataSource)
+    }
+
+    /**
+     * Provide PermissionManager
+     */
+    @Provides
+    @Singleton
+    fun providePermissionManager(): PermissionManager {
+        return PermissionManager()
+    }
+
+    /**
+     * Provide ServiceManager
+     */
+    @Provides
+    @Singleton
+    fun provideServiceManager(): ServiceManager {
+        return ServiceManager()
+    }
+
+    /**
+     * Provide MapManager
+     */
+    @Provides
+    @Singleton
+    fun provideMapManager(): MapManager {
+        return MapManager()
     }
 }

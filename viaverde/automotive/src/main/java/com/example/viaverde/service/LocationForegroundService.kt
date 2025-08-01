@@ -1,6 +1,7 @@
 package com.example.viaverde.service
 
 import android.app.*
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
@@ -100,12 +101,37 @@ class LocationForegroundService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "LocationForegroundService onStartCommand called - flags: $flags, startId: $startId")
 
-        // Check if we have a valid token before starting the service
-        // Note: This is a suspend function, but we can't use coroutines in onStartCommand
-        // We'll assume the service should start if it's being called
-        Log.d(TAG, "onStartCommand: Proceeding with service startup")
+        // Check if this is from boot
+        val isFromBoot = intent?.action == "com.example.viaverde.START_SERVICE_FROM_BOOT"
+        Log.d(TAG, "onStartCommand: Is from boot: $isFromBoot")
 
-        Log.d(TAG, "onStartCommand: Token validation passed, proceeding with service startup")
+        // Only check auto-start setting for boot cases
+        if (isFromBoot) {
+            val sharedPrefs = getSharedPreferences("settings", MODE_PRIVATE)
+            val isAutoStartEnabled = sharedPrefs.getBoolean("auto_start_enabled", false)
+
+            Log.d(TAG, "onStartCommand: Boot case - auto-start setting: $isAutoStartEnabled")
+
+            if (!isAutoStartEnabled) {
+                Log.d(TAG, "onStartCommand: Auto-start disabled for boot case, stopping service")
+                stopSelf()
+                return START_NOT_STICKY
+            }
+        } else {
+            Log.d(TAG, "onStartCommand: App startup case - proceeding with service start")
+        }
+
+        // Check location permissions
+        val hasLocationPermission = checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+
+        if (!hasLocationPermission) {
+            Log.w(TAG, "onStartCommand: No location permissions, stopping service")
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
+        Log.d(TAG, "onStartCommand: Location permission granted, proceeding with service start")
 
         try {
             // Create and start foreground service with notification
@@ -139,6 +165,8 @@ class LocationForegroundService : Service() {
     override fun onBind(intent: Intent?): IBinder? {
         return null
     }
+
+
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

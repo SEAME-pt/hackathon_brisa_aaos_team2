@@ -1,5 +1,7 @@
 package com.example.viaverde.presentation.main.ui
 
+import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -11,11 +13,14 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.example.viaverde.R
 import com.example.viaverde.core.security.SecurityUtils
 import com.example.viaverde.core.utils.Constants
+import com.example.viaverde.core.permission.PermissionManager
+import com.example.viaverde.core.service.ServiceManager
 import com.example.viaverde.domain.usecase.auth.LoginUseCase
 import com.example.viaverde.presentation.auth.ui.LoginActivity
 import com.example.viaverde.presentation.main.ui.HomeFragment
@@ -35,188 +40,51 @@ class MainActivity : AppCompatActivity() {
     @Inject
     lateinit var loginUseCase: LoginUseCase
 
+    @Inject
+    lateinit var permissionManager: PermissionManager
+
+    @Inject
+    lateinit var serviceManager: ServiceManager
+
     private lateinit var homeTab: android.view.View
     private lateinit var settingsTab: android.view.View
     private lateinit var accountTab: android.view.View
 
-    private val overlayPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        Log.d(TAG, "Overlay permission result received - resultCode: ${result.resultCode}")
-        Log.d(TAG, "Overlay permission result - data: ${result.data}")
 
-        // Add a small delay to ensure the activity is fully resumed
-        Handler(Looper.getMainLooper()).postDelayed({
-            Log.d(TAG, "Processing overlay permission result after delay")
-
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    if (android.provider.Settings.canDrawOverlays(this)) {
-                        Log.d(TAG, "Overlay permission granted")
-                        // TODO: Update overlay permission state
-                    } else {
-                        Log.d(TAG, "Overlay permission denied")
-                    }
-                }
-                // Ensure the service is running after permission flow
-                Log.d(TAG, "Ensuring location service is running after overlay permission")
-                ensureLocationServiceRunning()
-            } catch (e: Exception) {
-                Log.e(TAG, "Error in overlay permission result", e)
-            }
-            Log.d(TAG, "Overlay permission flow completed")
-        }, 500) // 500ms delay
-    }
-
-    private val foregroundServicePermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        Log.d(TAG, "Foreground service location permission result: $isGranted")
-        if (isGranted) {
-            Log.d(TAG, "Foreground service location permission granted")
-            savePermissionStates()
-            checkAndStartLocationService()
-        } else {
-            Log.w(TAG, "Foreground service location permission denied")
-            Toast.makeText(this, "Location service requires foreground service permission", Toast.LENGTH_LONG).show()
-        }
-    }
-
-                    private val locationPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        Log.d(TAG, "Location permissions result: $permissions")
-        val fineLocationGranted = permissions[android.Manifest.permission.ACCESS_FINE_LOCATION] ?: false
-        val coarseLocationGranted = permissions[android.Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
-
-        if (fineLocationGranted || coarseLocationGranted) {
-            Log.d(TAG, "Location permissions granted")
-            savePermissionStates()
-            checkAndStartLocationService()
-        } else {
-            Log.w(TAG, "Location permissions denied")
-            Toast.makeText(this, "Location permissions are required for the app to function", Toast.LENGTH_LONG).show()
-        }
-    }
-
-    private val backgroundLocationPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        Log.d(TAG, "Background location permission result: $isGranted")
-        if (isGranted) {
-            Log.d(TAG, "Background location permission granted")
-            savePermissionStates()
-            Toast.makeText(this, "Location tracking enabled for all times", Toast.LENGTH_LONG).show()
-        } else {
-            Log.w(TAG, "Background location permission denied")
-            Toast.makeText(this, "Background location is recommended for continuous tracking", Toast.LENGTH_LONG).show()
-            // If background location is denied, request basic location permissions
-            locationPermissionLauncher.launch(
-                arrayOf(
-                    android.Manifest.permission.ACCESS_FINE_LOCATION,
-                    android.Manifest.permission.ACCESS_COARSE_LOCATION
-                )
-            )
-            return@registerForActivityResult
-        }
-        checkAndStartLocationService()
-    }
-
-    private val notificationPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        Log.d(TAG, "Notification permission result: $isGranted")
-        if (isGranted) {
-            Log.d(TAG, "Notification permission granted")
-            savePermissionStates()
-            checkAndStartLocationService()
-        } else {
-            Log.w(TAG, "Notification permission denied")
-            Toast.makeText(this, "Notification permission is required to show service status", Toast.LENGTH_LONG).show()
-        }
-    }
 
     companion object {
         private const val TAG = "MainActivity"
+        private const val REQUEST_BASIC_LOCATION_PERMISSIONS = 1001
+        private const val REQUEST_BACKGROUND_LOCATION_PERMISSION = 1002
+        private const val REQUEST_NOTIFICATION_PERMISSION = 1003
+        private const val REQUEST_FOREGROUND_SERVICE_PERMISSION = 1004
     }
+
+    // Flag to track if we're waiting for background location permission
+    private var isWaitingForBackgroundLocation = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        Log.d(TAG, "onCreate: Activity starting")
-
-        // Check if this is from notification
-        val isFromNotification = intent?.getBooleanExtra("from_notification", false) ?: false
-        Log.d(TAG, "onCreate: Is from notification: $isFromNotification")
-
-        // Check if permissions should be checked after login
-        val checkPermissionsAfterLogin = intent?.getBooleanExtra("check_permissions_after_login", false) ?: false
-        Log.d(TAG, "onCreate: Check permissions after login: $checkPermissionsAfterLogin")
-
-        // Check if app is already running
-        val isAppAlreadyRunning = isAppRunning()
-        Log.d(TAG, "onCreate: Is app already running: $isAppAlreadyRunning")
-
-        // Set theme based on app state
-        if (!isAppAlreadyRunning) {
-            Log.d(TAG, "onCreate: App not running, using splash theme")
-            // Use splash theme for new app launches
-            setTheme(R.style.Theme_Auto0s_Splash)
-        } else {
-            Log.d(TAG, "onCreate: App already running, using main theme immediately")
-            // Use main theme immediately if app is already running
-            setTheme(R.style.Theme_Auto0s)
-        }
+        Log.d(TAG, "onCreate: Activity created")
 
         setContentView(R.layout.activity_main)
 
-        // Add fade-in animation for smooth appearance
-        if (isFromNotification) {
-            Log.d(TAG, "onCreate: Adding fade-in animation for notification launch")
-            // Use modern activity transitions
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                window.requestFeature(android.view.Window.FEATURE_ACTIVITY_TRANSITIONS)
-                window.enterTransition = android.transition.Fade()
-                window.exitTransition = android.transition.Fade()
-            }
-        }
+        // Initialize UI components
+        initializeUI()
 
-        // Initialize views
-        homeTab = findViewById(R.id.home_tab)
-        settingsTab = findViewById(R.id.settings_tab)
-        accountTab = findViewById(R.id.account_tab)
+        // Setup navigation
+        setupCustomNavigation()
 
-        // Check if user is logged in
+        // Check if user is logged in and start location service if needed
         lifecycleScope.launch {
-            if (!loginUseCase.isLoggedIn()) {
-                Log.d(TAG, "onCreate: No token found, redirecting to LoginActivity")
+            if (loginUseCase.isLoggedIn()) {
+                Log.d(TAG, "onCreate: User logged in, checking permissions and starting service")
+                checkAndRequestPermissions()
+                startLocationServiceIfNeeded()
+            } else {
+                Log.d(TAG, "onCreate: User not logged in, redirecting to LoginActivity")
                 LoginActivity.start(this@MainActivity)
                 finish()
-                return@launch
-            }
-
-            runOnUiThread {
-                // Setup custom navigation
-                setupCustomNavigation()
-
-                // Check overlay permission
-                // TODO: Get from use case
-                val hasAskedForOverlayPermission = false
-                Log.d(TAG, "onCreate: Has asked for overlay permission before: $hasAskedForOverlayPermission")
-
-                Log.d(TAG, "onCreate: No entrance animations - showing UI normally")
-            }
-
-            // Check all permissions and start location service if logged in
-            if (loginUseCase.isLoggedIn()) {
-                Log.d(TAG, "onCreate: Token exists, checking all permissions and starting location service")
-                if (checkPermissionsAfterLogin) {
-                    Log.d(TAG, "onCreate: Checking permissions immediately after login")
-                    checkAndStartLocationService()
-                } else {
-                    Log.d(TAG, "onCreate: Normal permission check flow")
-                    checkAndStartLocationService()
-                }
             }
         }
     }
@@ -225,11 +93,14 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         Log.d(TAG, "onResume: Activity resumed")
 
-        // Only check permissions if user is logged in and service is not running
+        // Check if user returned from settings and continue permission flow
+        checkAndRequestPermissions()
+
+        // Check if service should be running
         lifecycleScope.launch {
-            if (loginUseCase.isLoggedIn() && !LocationForegroundService.isRunning()) {
-                Log.d(TAG, "onResume: User logged in but service not running, checking permissions")
-                checkAndStartLocationService()
+            if (loginUseCase.isLoggedIn() && !serviceManager.isLocationServiceRunning()) {
+                Log.d(TAG, "onResume: User logged in, service not running, starting service")
+                startLocationServiceIfNeeded()
             }
         }
     }
@@ -242,6 +113,58 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "onDestroy: Activity destroyed")
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        when (requestCode) {
+            REQUEST_BASIC_LOCATION_PERMISSIONS -> {
+                if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+                    Log.d(TAG, "onRequestPermissionsResult: Basic location permissions granted")
+                    checkAndRequestPermissions() // Continue with next permission
+                } else {
+                    Log.w(TAG, "onRequestPermissionsResult: Basic location permissions denied")
+                    Toast.makeText(this, "Location permission is required for the app to function properly", Toast.LENGTH_LONG).show()
+                }
+            }
+            REQUEST_BACKGROUND_LOCATION_PERMISSION -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    Log.d(TAG, "onRequestPermissionsResult: Background location permission granted")
+                    isWaitingForBackgroundLocation = false
+                    checkAndRequestPermissions() // Continue with next permission
+                } else {
+                    Log.w(TAG, "onRequestPermissionsResult: Background location permission denied")
+                    isWaitingForBackgroundLocation = false
+                    Toast.makeText(this, "Background location permission is recommended for better functionality", Toast.LENGTH_LONG).show()
+                    checkAndRequestPermissions() // Continue anyway
+                }
+            }
+            REQUEST_NOTIFICATION_PERMISSION -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    Log.d(TAG, "onRequestPermissionsResult: Notification permission granted")
+                    checkAndRequestPermissions() // Continue with next permission
+                } else {
+                    Log.w(TAG, "onRequestPermissionsResult: Notification permission denied")
+                    Toast.makeText(this, "Notification permission is recommended for important alerts", Toast.LENGTH_LONG).show()
+                    checkAndRequestPermissions() // Continue anyway
+                }
+            }
+            REQUEST_FOREGROUND_SERVICE_PERMISSION -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    Log.d(TAG, "onRequestPermissionsResult: Foreground service permission granted")
+                    checkAndRequestPermissions() // Continue with next permission
+                } else {
+                    Log.w(TAG, "onRequestPermissionsResult: Foreground service permission denied")
+                    Toast.makeText(this, "Foreground service permission is required for location services", Toast.LENGTH_LONG).show()
+                    checkAndRequestPermissions() // Continue anyway
+                }
+            }
+        }
     }
 
     private fun checkOverlayPermission() {
@@ -264,12 +187,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showOverlayPermissionDialog() {
-        AlertDialog.Builder(this)
+        val dialog = AlertDialog.Builder(this)
             .setTitle("Permission Required")
             .setMessage("This app needs overlay permission to show important information while driving. Would you like to grant this permission?")
             .setPositiveButton("Grant Permission") { _, _ ->
                 Log.d(TAG, "showOverlayPermissionDialog: User chose to grant overlay permission")
-                requestOverlayPermission()
+                // Simplified: Just show a message to user to enable manually
+                Toast.makeText(this, "Please enable overlay permission manually in Settings > Apps > ViaVerde > Permissions", Toast.LENGTH_LONG).show()
             }
             .setNegativeButton("Skip") { _, _ ->
                 Log.d(TAG, "showOverlayPermissionDialog: User chose to skip overlay permission")
@@ -278,136 +202,6 @@ class MainActivity : AppCompatActivity() {
             .setOnCancelListener {
                 Log.d(TAG, "showOverlayPermissionDialog: User cancelled dialog")
                 // TODO: Update overlay permission state
-            }
-            .setCancelable(true)
-            .show()
-    }
-
-    private fun requestOverlayPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            Log.d(TAG, "requestOverlayPermission: Starting overlay permission request")
-            val intent = Intent(
-                android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                android.net.Uri.parse("package:$packageName")
-            )
-            Log.d(TAG, "requestOverlayPermission: Launching intent: $intent")
-
-            try {
-                overlayPermissionLauncher.launch(intent)
-                Log.d(TAG, "requestOverlayPermission: Intent launched successfully")
-            } catch (e: Exception) {
-                Log.e(TAG, "requestOverlayPermission: Error launching intent", e)
-            }
-        } else {
-            Log.d(TAG, "requestOverlayPermission: Android version too low for overlay permission")
-        }
-    }
-
-        private fun checkAndStartLocationService() {
-        Log.d(TAG, "checkAndStartLocationService: Checking permissions before starting service")
-
-        lifecycleScope.launch {
-            // Check if we have a valid token
-            val hasToken = loginUseCase.isLoggedIn()
-
-            if (hasToken && !LocationForegroundService.isRunning()) {
-                Log.d(TAG, "checkAndStartLocationService: Token present, checking permissions")
-
-                // Check for FOREGROUND_SERVICE_LOCATION permission on Android 14+
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                    if (checkSelfPermission(android.Manifest.permission.FOREGROUND_SERVICE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                        Log.d(TAG, "checkAndStartLocationService: Requesting FOREGROUND_SERVICE_LOCATION permission")
-                        foregroundServicePermissionLauncher.launch(android.Manifest.permission.FOREGROUND_SERVICE_LOCATION)
-                        return@launch
-                    }
-                }
-
-                // Check for basic location permissions first
-                if (checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
-                    checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                    Log.d(TAG, "checkAndStartLocationService: Requesting basic location permissions first")
-                    locationPermissionLauncher.launch(
-                        arrayOf(
-                            android.Manifest.permission.ACCESS_FINE_LOCATION,
-                            android.Manifest.permission.ACCESS_COARSE_LOCATION
-                        )
-                    )
-                    return@launch
-                }
-
-                // Check for background location permission after basic location permissions on Android 10+
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    if (checkSelfPermission(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                        Log.d(TAG, "checkAndStartLocationService: Requesting background location permission after basic permissions")
-                        showBackgroundLocationDialog()
-                        return@launch
-                    }
-                }
-
-                // Check for notification permission on Android 13+
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                        Log.d(TAG, "checkAndStartLocationService: Requesting notification permission")
-                        notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                        return@launch
-                    }
-                }
-
-                // All permissions granted, save permission states and start the service
-                savePermissionStates()
-                startLocationService()
-            } else {
-                Log.d(TAG, "checkAndStartLocationService: Service not started - hasToken: $hasToken, isRunning: ${LocationForegroundService.isRunning()}")
-            }
-        }
-    }
-
-        private fun savePermissionStates() {
-        Log.d(TAG, "savePermissionStates: Saving current permission states")
-
-        val sharedPrefs = getSharedPreferences("permissions", MODE_PRIVATE)
-        val editor = sharedPrefs.edit()
-
-        // Save location permissions
-        editor.putBoolean("location_fine", checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED)
-        editor.putBoolean("location_coarse", checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED)
-
-        // Save background location permission
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            editor.putBoolean("location_background", checkSelfPermission(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED)
-        }
-
-        // Save notification permission
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            editor.putBoolean("notifications", checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
-        }
-
-        // Save foreground service permission
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            editor.putBoolean("foreground_service_location", checkSelfPermission(android.Manifest.permission.FOREGROUND_SERVICE_LOCATION) == PackageManager.PERMISSION_GRANTED)
-        }
-
-        editor.apply()
-        Log.d(TAG, "savePermissionStates: Permission states saved")
-    }
-
-    private fun showBackgroundLocationDialog() {
-        val dialog = AlertDialog.Builder(this)
-            .setTitle("Background Location Access")
-            .setMessage("Via Verde needs background location access to track your vehicle for toll payments even when the app is not actively being used. This ensures continuous tracking for accurate toll billing.\n\nGranting this permission will also automatically grant basic location permissions.")
-            .setPositiveButton("Allow") { _, _ ->
-                Log.d(TAG, "showBackgroundLocationDialog: User chose to allow background location")
-                backgroundLocationPermissionLauncher.launch(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-            }
-            .setNegativeButton("Skip") { _, _ ->
-                Log.d(TAG, "showBackgroundLocationDialog: User chose to skip background location")
-                Toast.makeText(this, "Background location is recommended for continuous tracking", Toast.LENGTH_LONG).show()
-                checkAndStartLocationService()
-            }
-            .setOnCancelListener {
-                Log.d(TAG, "showBackgroundLocationDialog: User cancelled dialog")
-                Toast.makeText(this, "Background location is recommended for continuous tracking", Toast.LENGTH_LONG).show()
-                checkAndStartLocationService()
             }
             .setCancelable(true)
             .create()
@@ -427,37 +221,153 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun startLocationService() {
-        Log.d(TAG, "startLocationService: Starting location service")
-                val intent = Intent(this@MainActivity, LocationForegroundService::class.java)
+    private fun checkAndRequestPermissions() {
+        Log.d(TAG, "checkAndRequestPermissions: Checking required permissions")
 
-                try {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        startForegroundService(intent)
-                    } else {
-                        startService(intent)
-                    }
-            Log.d(TAG, "startLocationService: Service start intent sent")
-                } catch (e: Exception) {
-            Log.e(TAG, "startLocationService: Error starting service", e)
+        // Check basic location permissions
+        if (!permissionManager.hasBasicLocationPermissions(this)) {
+            Log.d(TAG, "checkAndRequestPermissions: Requesting basic location permissions")
+            requestBasicLocationPermissions()
+            return
+        }
+
+        // Check background location permission (Android 10+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !permissionManager.hasBackgroundLocationPermission(this)) {
+            // Reset flag if permission was granted while we were waiting
+            if (isWaitingForBackgroundLocation) {
+                isWaitingForBackgroundLocation = false
+            }
+            Log.d(TAG, "checkAndRequestPermissions: Requesting background location permission")
+            requestBackgroundLocationPermission()
+            return
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && permissionManager.hasBackgroundLocationPermission(this)) {
+            // Reset flag if permission is now granted
+            isWaitingForBackgroundLocation = false
+        }
+
+        // Check notification permission (Android 13+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !permissionManager.hasNotificationPermission(this)) {
+            Log.d(TAG, "checkAndRequestPermissions: Requesting notification permission")
+            requestNotificationPermission()
+            return
+        }
+
+        // Check foreground service permission (Android 14+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && !permissionManager.hasForegroundServicePermission(this)) {
+            Log.d(TAG, "checkAndRequestPermissions: Requesting foreground service permission")
+            requestForegroundServicePermission()
+            return
+        }
+
+        Log.d(TAG, "checkAndRequestPermissions: All permissions granted")
+    }
+
+    private fun requestBasicLocationPermissions() {
+        val permissions = arrayOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        )
+
+        if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_FINE_LOCATION)) {
+            showPermissionRationaleDialog("Location permission is required to show your position on the map and provide location-based services.")
+        } else {
+            ActivityCompat.requestPermissions(this, permissions, REQUEST_BASIC_LOCATION_PERMISSIONS)
+        }
+    }
+
+    private fun requestBackgroundLocationPermission() {
+        // Background location permission requires special handling on Android 10+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            if (!isWaitingForBackgroundLocation) {
+                isWaitingForBackgroundLocation = true
+                showBackgroundLocationDialog()
+            }
+        } else {
+            // For older versions, use standard request
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION), REQUEST_BACKGROUND_LOCATION_PERMISSION)
+        }
+    }
+
+    private fun showBackgroundLocationDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Background Location Permission")
+            .setMessage("This app needs background location permission to continue tracking your location when the app is in the background.\n\nPlease follow these steps:\n1. Tap 'Open Settings'\n2. Tap 'Permissions'\n3. Tap 'Location'\n4. Select 'Allow all the time'")
+            .setPositiveButton("Open Settings") { _, _ ->
+                // Open app info page (most reliable approach)
+                val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = android.net.Uri.fromParts("package", packageName, null)
                 }
+                startActivity(intent)
+
+                // Show a toast to guide the user
+                Toast.makeText(this, "Go to Permissions → Location → Allow all the time", Toast.LENGTH_LONG).show()
+            }
+            .setNegativeButton("Skip") { _, _ ->
+                // Continue without background location permission
+                Log.d(TAG, "showBackgroundLocationDialog: User chose to skip background location permission")
+                isWaitingForBackgroundLocation = false
+                checkAndRequestPermissions() // Continue with next permission
+            }
+            .setCancelable(false)
+            .show()
     }
 
-    private fun ensureLocationServiceRunning() {
-        Log.d(TAG, "ensureLocationServiceRunning: Checking if service should start")
-        checkAndStartLocationService()
+    private fun requestNotificationPermission() {
+        if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.POST_NOTIFICATIONS)) {
+            showPermissionRationaleDialog("Notification permission is required to show important alerts and updates.")
+        } else {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQUEST_NOTIFICATION_PERMISSION)
+        }
     }
 
-    private fun isAppRunning(): Boolean {
-        Log.d(TAG, "isAppRunning: Checking if app is already running")
-        // Use a simpler approach instead of deprecated getRunningTasks
-        // For now, we'll assume the app is not running if this method is called
-        // In a real implementation, you might use UsageStatsManager or other alternatives
-        Log.d(TAG, "isAppRunning: Using simplified check - assuming app not running")
-        return false
+    private fun requestForegroundServicePermission() {
+        if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.FOREGROUND_SERVICE_LOCATION)) {
+            showPermissionRationaleDialog("Foreground service permission is required to provide location services.")
+        } else {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.FOREGROUND_SERVICE_LOCATION), REQUEST_FOREGROUND_SERVICE_PERMISSION)
+        }
     }
 
-        private fun setupCustomNavigation() {
+    private fun showPermissionRationaleDialog(message: String) {
+        AlertDialog.Builder(this)
+            .setTitle("Permission Required")
+            .setMessage(message)
+            .setPositiveButton("Grant") { _, _ ->
+                // Re-request the permission
+                checkAndRequestPermissions()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun startLocationServiceIfNeeded() {
+        Log.d(TAG, "startLocationServiceIfNeeded: Checking if service should start")
+
+        // Check if all required permissions are granted
+        if (!permissionManager.hasAllRequiredPermissions(this)) {
+            Log.d(TAG, "startLocationServiceIfNeeded: Missing permissions, skipping service start")
+            return
+        }
+
+        // Check if service is already running
+        if (serviceManager.isLocationServiceRunning()) {
+            Log.d(TAG, "startLocationServiceIfNeeded: Service already running, skipping")
+            return
+        }
+
+        // Start the service (auto-start setting only affects boot behavior, not app startup)
+        Log.d(TAG, "startLocationServiceIfNeeded: Starting location service")
+        serviceManager.startLocationService(this)
+    }
+
+    private fun initializeUI() {
+        // Initialize views
+        homeTab = findViewById(R.id.home_tab)
+        settingsTab = findViewById(R.id.settings_tab)
+        accountTab = findViewById(R.id.account_tab)
+    }
+
+    private fun setupCustomNavigation() {
         // Set default fragment
         loadFragment(HomeFragment.newInstance())
         updateTabSelection(0) // Home is selected by default
@@ -521,3 +431,5 @@ class MainActivity : AppCompatActivity() {
             .commit()
     }
 }
+
+

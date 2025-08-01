@@ -20,7 +20,8 @@ class BootReceiver : BroadcastReceiver() {
 
         when (intent.action) {
             Intent.ACTION_BOOT_COMPLETED,
-            "android.intent.action.QUICKBOOT_POWERON" -> {
+            "android.intent.action.QUICKBOOT_POWERON",
+            "android.intent.action.LOCKED_BOOT_COMPLETED" -> {
                 Log.d(TAG, "onReceive: Processing boot completed event")
                 handleBootCompleted(context)
             }
@@ -34,20 +35,30 @@ class BootReceiver : BroadcastReceiver() {
         Log.d(TAG, "handleBootCompleted: Starting boot process")
 
         try {
-            // Note: We can't use suspend functions in BroadcastReceiver
-            // For now, we'll start the service and let it handle its own validation
-            Log.d(TAG, "handleBootCompleted: Starting location service")
+            // Check if auto-start is enabled in settings
+            val sharedPrefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+            val isAutoStartEnabled = sharedPrefs.getBoolean("auto_start_enabled", false)
 
-            // Start the location service directly
-            val serviceIntent = Intent(context, LocationForegroundService::class.java)
+            Log.d(TAG, "handleBootCompleted: Auto-start setting: $isAutoStartEnabled")
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(serviceIntent)
-            } else {
-                context.startService(serviceIntent)
+            if (!isAutoStartEnabled) {
+                Log.d(TAG, "handleBootCompleted: Auto-start disabled, skipping service start")
+                return
             }
 
-            Log.d(TAG, "handleBootCompleted: Location service start intent sent")
+                                    // Start service directly without delay - the service will handle its own startup logic
+            Log.d(TAG, "handleBootCompleted: Auto-start enabled, starting service directly")
+
+            try {
+                val serviceIntent = Intent(context, LocationForegroundService::class.java).apply {
+                    action = "com.example.viaverde.START_SERVICE_FROM_BOOT"
+                }
+                context.startService(serviceIntent)
+                Log.d(TAG, "handleBootCompleted: Service start intent sent successfully")
+            } catch (e: Exception) {
+                Log.e(TAG, "handleBootCompleted: Error starting service directly", e)
+            }
+
         } catch (e: Exception) {
             Log.e(TAG, "handleBootCompleted: Error during boot process", e)
         }

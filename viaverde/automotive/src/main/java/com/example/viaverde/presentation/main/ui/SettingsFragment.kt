@@ -1,20 +1,12 @@
 package com.example.viaverde.presentation.main.ui
 
-import android.Manifest
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Bundle
-import android.provider.Settings
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.Switch
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
 import com.example.viaverde.R
 
@@ -101,8 +93,13 @@ class SettingsFragment : Fragment() {
 
             // Save auto-start state
             saveAutoStartState(isChecked)
+
+            // Show appropriate message based on auto-start setting
+            if (isChecked) {
+                Toast.makeText(context, "Auto-start enabled: Service will start automatically on boot", Toast.LENGTH_LONG).show()
+            } else {
+                Toast.makeText(context, "Auto-start disabled: Service will not start automatically on boot", Toast.LENGTH_LONG).show()
+            }
         }
     }
-
-
 }
