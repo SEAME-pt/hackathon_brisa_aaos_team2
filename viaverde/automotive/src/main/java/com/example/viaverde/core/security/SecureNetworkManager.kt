@@ -9,6 +9,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 import java.security.cert.X509Certificate
 import java.util.concurrent.TimeUnit
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import javax.net.ssl.*
@@ -17,7 +18,7 @@ import javax.net.ssl.*
  * Secure network manager with comprehensive HTTPS security measures
  */
 @Singleton
-class SecureNetworkManager @Inject constructor(context: Context) {
+class SecureNetworkManager @Inject constructor(@ApplicationContext context: Context) {
 
     companion object {
         private const val TAG = "SecureNetworkManager"

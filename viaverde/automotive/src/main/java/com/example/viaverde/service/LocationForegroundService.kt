@@ -179,7 +179,7 @@ class LocationForegroundService : Service() {
 
             val notification = NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Service is active")
-                .setContentText("Your location is being shared")
+                .setContentText("Your location is safe")
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentIntent(pendingIntent)
                 .setOngoing(true)
@@ -188,7 +188,7 @@ class LocationForegroundService : Service() {
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .build()
 
-            Log.d(TAG, "Notification created with text: Your location is being shared")
+            Log.d(TAG, "Notification created with text: Your location is safe")
             return notification
 
         } catch (e: Exception) {
@@ -196,7 +196,7 @@ class LocationForegroundService : Service() {
             // Return a basic notification as fallback
             return NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Service is active")
-                .setContentText("Your location is being shared")
+                .setContentText("Your location is safe")
                 .setSmallIcon(R.drawable.ic_notification)
                 .setOngoing(true)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)

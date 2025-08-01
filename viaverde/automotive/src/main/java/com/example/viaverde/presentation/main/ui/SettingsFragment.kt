@@ -1,11 +1,20 @@
 package com.example.viaverde.presentation.main.ui
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.Switch
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
 import com.example.viaverde.R
 
@@ -38,25 +47,11 @@ class SettingsFragment : Fragment() {
         // Initialize views
         autoStartToggle = view.findViewById(R.id.auto_start_toggle)
 
-        // Load saved auto-start state
+        // Load saved states
         loadAutoStartState()
 
-        // Setup auto-start toggle
-        autoStartToggle.setOnCheckedChangeListener { _, isChecked ->
-            Log.d(TAG, "Auto-start toggle changed to: $isChecked")
-
-            // Apply green color when active
-            if (isChecked) {
-                autoStartToggle.thumbTintList = android.content.res.ColorStateList.valueOf(resources.getColor(R.color.via_verde_green, null))
-                autoStartToggle.trackTintList = android.content.res.ColorStateList.valueOf(resources.getColor(R.color.via_verde_green, null))
-            } else {
-                autoStartToggle.thumbTintList = null
-                autoStartToggle.trackTintList = null
-            }
-
-            // Save auto-start state
-            saveAutoStartState(isChecked)
-        }
+        // Setup toggles
+        setupAutoStartToggleListener()
     }
 
     private fun loadAutoStartState() {
@@ -108,4 +103,6 @@ class SettingsFragment : Fragment() {
             saveAutoStartState(isChecked)
         }
     }
+
+
 }

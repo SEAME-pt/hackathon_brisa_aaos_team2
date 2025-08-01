@@ -1,37 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="@color/white"
-    android:gravity="center"
-    android:padding="24dp">
+    android:layout_height="match_parent">
 
-    <!-- Via Verde Active Status -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:gravity="center"
-        android:padding="32dp">
+        <!-- OpenStreetMap View -->
+        <org.osmdroid.views.MapView
+            android:id="@+id/mapView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clickable="true"
+            android:focusable="true" />
 
-        <ImageView
-            android:layout_width="80dp"
-            android:layout_height="80dp"
-            android:src="@drawable/via_verde_logo"
-            android:layout_marginBottom="16dp"
-            android:contentDescription="Via Verde Logo" />
-
-
-
-        <TextView
+        <!-- Current Location Button -->
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/btnCurrentLocation"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Your vehicle is being tracked for toll payments"
-            android:textSize="14sp"
-            android:textColor="@color/dark_grey"
-            android:gravity="center"/>
+            android:layout_gravity="bottom|end"
+            android:layout_margin="16dp"
+            android:src="@android:drawable/ic_menu_mylocation"
+            android:backgroundTint="@color/via_verde_green"
+            android:tint="@color/white" />
 
-    </LinearLayout>
-
-</LinearLayout>
+</FrameLayout>

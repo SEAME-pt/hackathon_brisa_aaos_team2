@@ -6,10 +6,13 @@ import com.example.viaverde.core.security.SecureNetworkManager
 import com.example.viaverde.data.datasource.local.SecurePreferencesDataSource
 import com.example.viaverde.data.datasource.remote.AuthApiService
 import com.example.viaverde.data.datasource.remote.LocationApiService
+import com.example.viaverde.data.datasource.remote.TollApiService
 import com.example.viaverde.data.repository.AuthRepositoryImpl
 import com.example.viaverde.data.repository.LocationRepositoryImpl
+import com.example.viaverde.data.repository.TollRepositoryImpl
 import com.example.viaverde.domain.repository.AuthRepository
 import com.example.viaverde.domain.repository.LocationRepository
+import com.example.viaverde.domain.repository.TollRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -35,16 +38,7 @@ object AppModule {
         return SecureStorageManager(context)
     }
 
-    /**
-     * Provide SecureNetworkManager
-     */
-    @Provides
-    @Singleton
-    fun provideSecureNetworkManager(
-        @ApplicationContext context: Context
-    ): SecureNetworkManager {
-        return SecureNetworkManager(context)
-    }
+
 
     /**
      * Provide SecurePreferencesDataSource
@@ -101,5 +95,27 @@ object AppModule {
         remoteDataSource: LocationApiService
     ): LocationRepository {
         return LocationRepositoryImpl(localDataSource, remoteDataSource)
+    }
+
+    /**
+     * Provide TollApiService
+     */
+    @Provides
+    @Singleton
+    fun provideTollApiService(
+        networkManager: SecureNetworkManager
+    ): TollApiService {
+        return TollApiService(networkManager)
+    }
+
+    /**
+     * Provide TollRepository implementation
+     */
+    @Provides
+    @Singleton
+    fun provideTollRepository(
+        remoteDataSource: TollApiService
+    ): TollRepository {
+        return TollRepositoryImpl(remoteDataSource)
     }
 }

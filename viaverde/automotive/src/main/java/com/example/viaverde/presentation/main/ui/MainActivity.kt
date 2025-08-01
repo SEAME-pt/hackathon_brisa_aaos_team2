@@ -322,19 +322,10 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-                // Check for background location permission first on Android 10+
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    if (checkSelfPermission(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                        Log.d(TAG, "checkAndStartLocationService: Requesting background location permission first")
-                        showBackgroundLocationDialog()
-                        return@launch
-                    }
-                }
-
-                // Check for basic location permissions (if background location was denied or not available)
+                // Check for basic location permissions first
                 if (checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
                     checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                    Log.d(TAG, "checkAndStartLocationService: Requesting basic location permissions")
+                    Log.d(TAG, "checkAndStartLocationService: Requesting basic location permissions first")
                     locationPermissionLauncher.launch(
                         arrayOf(
                             android.Manifest.permission.ACCESS_FINE_LOCATION,
@@ -342,6 +333,15 @@ class MainActivity : AppCompatActivity() {
                         )
                     )
                     return@launch
+                }
+
+                // Check for background location permission after basic location permissions on Android 10+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    if (checkSelfPermission(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                        Log.d(TAG, "checkAndStartLocationService: Requesting background location permission after basic permissions")
+                        showBackgroundLocationDialog()
+                        return@launch
+                    }
                 }
 
                 // Check for notification permission on Android 13+
@@ -392,7 +392,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showBackgroundLocationDialog() {
-        AlertDialog.Builder(this)
+        val dialog = AlertDialog.Builder(this)
             .setTitle("Background Location Access")
             .setMessage("Via Verde needs background location access to track your vehicle for toll payments even when the app is not actively being used. This ensures continuous tracking for accurate toll billing.\n\nGranting this permission will also automatically grant basic location permissions.")
             .setPositiveButton("Allow") { _, _ ->
@@ -410,7 +410,21 @@ class MainActivity : AppCompatActivity() {
                 checkAndStartLocationService()
             }
             .setCancelable(true)
-            .show()
+            .create()
+
+        dialog.show()
+
+        // Set green color for the buttons and remove purple ripple effect
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.apply {
+            setTextColor(resources.getColor(R.color.via_verde_green, null))
+            background = null // Remove default background/ripple
+            isClickable = true
+        }
+        dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.apply {
+            setTextColor(resources.getColor(R.color.via_verde_green, null))
+            background = null // Remove default background/ripple
+            isClickable = true
+        }
     }
 
     private fun startLocationService() {

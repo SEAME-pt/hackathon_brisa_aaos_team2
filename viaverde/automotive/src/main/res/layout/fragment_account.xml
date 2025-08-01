@@ -67,7 +67,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Stops Via Verde"
+                android:text="Turns off the service"
                 android:textSize="12sp"
                 android:textColor="@color/dark_grey"/>
 
